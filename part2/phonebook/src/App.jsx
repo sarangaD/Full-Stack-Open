@@ -8,6 +8,7 @@ import personsService from './service/persons'
 
 const App = () => {
   const [persons, setPersons] = useState([]);
+  const [filteredPersons, setFilteredPersons] = useState(persons);
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
   const [search, setSearch] = useState('');
@@ -18,6 +19,7 @@ const App = () => {
     personsService.getAll().then(
       initialPersons => {
         setPersons(initialPersons);
+        setFilteredPersons(initialPersons);
       }
     )
   }
@@ -34,14 +36,20 @@ const App = () => {
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
-    const filteredlist =persons.filter(x => x.name.toLowerCase().includes(search.toLowerCase()));
-    setPersons(search.length > 0 ?  filteredlist : persons);
+    if (event.target.value === '') {
+      setFilteredPersons(persons);
+    } else {
+      const filteredList = persons.filter(x => 
+        x.name.toLowerCase().includes(event.target.value.toLowerCase())
+      );
+      setFilteredPersons(filteredList);
+    }
   }
 
   const addPersons = (event) => {
     event.preventDefault();
 
-    const maxId = persons.reduce((max, person) => {
+    const maxId = filteredPersons.reduce((max, person) => {
       const id = person.id ? parseInt(person.id, 10) : person.id;
       return id > max ? id : max;
     }, 0);
@@ -52,13 +60,13 @@ const App = () => {
       id: (maxId + 1).toString()
     }
 
-    const exsitingPerson = persons.find(x => x.name === newName);
+    const exsitingPerson = filteredPersons.find(x => x.name === newName);
     if (exsitingPerson) {
       if (window.confirm(`${newName} is already added to the phonebook, replace the old number with a new number?`)) {
         newPerson.id = exsitingPerson.id;
         personsService.update(exsitingPerson.id, newPerson)
           .then(returnedPerson => {
-            setPersons(persons.map(person => person.id === exsitingPerson.id ? returnedPerson : person))
+            setFilteredPersons(persons.map(person => person.id === exsitingPerson.id ? returnedPerson : person));
             setNewName('');
             setNewNumber('');
           })
@@ -67,7 +75,7 @@ const App = () => {
     else {
       personsService.create(newPerson)
         .then(returnedPerson => {
-          setPersons(persons.concat(returnedPerson));
+          setFilteredPersons(filteredPersons.concat(returnedPerson));
           setNewName('');
           setNewNumber('');
           const error= {message:`Added ${newPerson.name}`,error:false};
@@ -81,12 +89,12 @@ const App = () => {
 
   const deletePerson = (id) => {
     console.log(id);
-    const toDelete = persons.find(n => n.id === id)
+    const toDelete = filteredPersons.find(n => n.id === id)
 
     if (window.confirm(`Delete ${toDelete.name}?`)) {
       personsService.deletebyId(id)
         .then(response => {
-          setPersons(persons.filter(person => person.id !== id));
+          setFilteredPersons(filteredPersons.filter(person => person.id !== id));
         })
         .catch(err => {
           const error = {message:`Information of ${toDelete.name} has already been removed from server`,error:true}
@@ -108,7 +116,7 @@ const App = () => {
       <PersonForm addPersons={addPersons} newName={newName} newNumber={newNumber} handleChange={handleChange} handleNumberChange={handleNumberChange} />
 
       <h2>Numbers</h2>
-      <Persons persons={persons} deletePerson={(e) => deletePerson(e)} />
+      <Persons persons={filteredPersons} deletePerson={(e) => deletePerson(e)} />
     </div>
   )
 }
